@@ -7,10 +7,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func CreateBook(w http.ResponseWriter, r *http.Request) {
+func GetProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	title := vars["title"]
-	page := vars["page"]
-
-	fmt.Fprintf(w, "<h1>You've requested the book: %s on page %s\n</h1>", title, page)
+	name := vars["name"]
+	fmt.Fprintf(w, "<h1>You've requested the product: %s \n</h1>", name)
 }
