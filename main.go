@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	//updated
 	fmt.Println("Main - Entry")
 	r := mux.NewRouter()
 	r.HandleFunc("/api/v1.0/product/{name}", ecomm.GetProduct).Methods("GET")
