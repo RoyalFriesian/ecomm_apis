@@ -1,40 +1,69 @@
 package ecomm
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/mongo"
+	"gopkg.in/mgo.v2/bson"
 )
 
+type productCtx struct {
+	db   *mongo.Database
+	pCtx context.Context
+}
+
+func NewProduct(ctx context.Context, db *mongo.Database) *productCtx {
+	return &productCtx{db: db, pCtx: ctx}
+}
+
 type Product struct {
-	ID       int      `json:"id"`
-	Name     string   `json:"name"`
-	Details  string   `json:"details"`
-	Variants []string `json:"variants"`
+	Product_ID   int     `json:"product_id" bson:"product_id"`
+	Product_Name string  `json:"product_name" bson:"product_name"`
+	Retail_Price float32 `json:"retail_price" bson:"retail_price"`
 }
 
-type DeleteStatus struct {
+type Status struct {
 	ID     int    `json:"id"`
 	Status string `json:"status"`
 }
 
-type PutStatus struct {
-	ID     int    `json:"id"`
-	Status string `json:"status"`
-}
-
-type PatchStatus struct {
-	ID     int    `json:"id"`
-	Status string `json:"status"`
-}
-
-func GetProduct(w http.ResponseWriter, r *http.Request) {
+func (pc *productCtx) GetProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	name := vars["name"]
-	p := Product{ID: 10, Name: name, Details: "Some details"}
-	res, err := json.Marshal(p)
+	product_id, err := strconv.ParseInt(vars["id"], 10, 32)
+	if err != nil {
+		status := Status{ID: 0, Status: "Failure:" + err.Error()}
+		res, err := json.Marshal(status)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write(res)
+		return
+	}
+	var product Product
+	err = pc.db.
+		Collection("products").
+		FindOne(pc.pCtx, bson.M{"product_id": product_id}).
+		Decode(&product)
+	if err != nil {
+		status := Status{ID: 0, Status: "Failure:" + err.Error()}
+		res, err := json.Marshal(status)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+		w.Write(res)
+		return
+	}
+
+	res, err := json.Marshal(product)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -70,8 +99,8 @@ func DeleteProduct(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	var deleteStatus DeleteStatus
-	deleteStatus = DeleteStatus{ID: product.ID, Status: "Success : Product Deleted"}
+	var deleteStatus Status
+	deleteStatus = Status{ID: product.Product_ID, Status: "Success : Product Deleted"}
 	res, err := json.Marshal(deleteStatus)
 	if err != nil {
 		fmt.Println(err)
@@ -90,8 +119,8 @@ func PutProduct(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	var putStatus PutStatus
-	putStatus = PutStatus{ID: product.ID, Status: "Success : Product Updated"}
+	var putStatus Status
+	putStatus = Status{ID: product.Product_ID, Status: "Success : Product Updated"}
 	res, err := json.Marshal(putStatus)
 	if err != nil {
 		fmt.Println(err)
@@ -109,8 +138,8 @@ func PatchProduct(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	var patchStatus PatchStatus
-	patchStatus = PatchStatus{ID: product.ID, Status: "Success : Product Patch Updated"}
+	var patchStatus Status
+	patchStatus = Status{ID: product.Product_ID, Status: "Success : Product Patch Updated"}
 	res, err := json.Marshal(patchStatus)
 	if err != nil {
 		fmt.Println(err)
