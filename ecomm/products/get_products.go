@@ -24,7 +24,7 @@ func NewProduct(ctx context.Context, db *mongo.Database) *productCtx {
 type Product struct {
 	Product_ID   int     `json:"product_id" bson:"product_id"`
 	Product_Name string  `json:"product_name" bson:"product_name"`
-	Retail_Price float32 `json:"retail_price" bson:"retail_price"`
+	Retail_Price float64 `json:"retail_price" bson:"retail_price"`
 }
 
 type Status struct {
@@ -73,18 +73,30 @@ func (pc *productCtx) GetProduct(w http.ResponseWriter, r *http.Request) {
 	w.Write(res)
 }
 
-func AddProduct(w http.ResponseWriter, r *http.Request) {
+func (pc *productCtx) AddProduct(w http.ResponseWriter, r *http.Request) {
 	var product Product
 	err := json.NewDecoder(r.Body).Decode(&product)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	res, err := json.Marshal(product)
+
+	result, err := pc.db.Collection("products").InsertOne(pc.pCtx, product)
+
 	if err != nil {
-		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	fmt.Println("Inserted ID : ", result.InsertedID)
+	res, err := json.Marshal(product)
+
+	if err != nil {
+		fmt.Println("Error : ", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	w.Write(res)
